@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = 'edulab-frontend'
+    }
+
     stages {
 
         stage('Checkout') {
@@ -9,16 +13,10 @@ pipeline {
             }
         }
 
-        stage('Branch Information') {
-            steps {
-                echo "Building branch: ${env.BRANCH_NAME}"
-            }
-        }
-
         stage('Validate Frontend') {
             steps {
                 sh '''
-                    echo "Checking frontend files..."
+                    echo "Checking project files..."
                     ls -la
 
                     if [ ! -f index.html ]; then
@@ -31,25 +29,31 @@ pipeline {
             }
         }
 
-        stage('DEV Pipeline') {
+        stage('Build DEV Docker Image') {
             when {
                 branch 'develop'
             }
 
             steps {
-                echo "DEV branch detected"
-                echo "Later: Build Docker image and deploy to DEV Kubernetes"
+                sh '''
+                    echo "Building DEV Docker image..."
+
+                    docker build \
+                    -t ${IMAGE_NAME}:dev-${BUILD_NUMBER} \
+                    .
+
+                    docker images | grep ${IMAGE_NAME}
+                '''
             }
         }
 
-        stage('PRODUCTION Pipeline') {
+        stage('Production') {
             when {
                 branch 'main'
             }
 
             steps {
-                echo "PRODUCTION branch detected"
-                echo "Later: Build Docker image and deploy to Production Kubernetes"
+                echo "Production pipeline will be added later"
             }
         }
     }
