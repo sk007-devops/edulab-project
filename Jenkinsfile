@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'edulab-frontend'
+        IMAGE_NAME = 'sanket007798/edulab-frontend'
     }
 
     stages {
@@ -16,7 +16,7 @@ pipeline {
         stage('Validate Frontend') {
             steps {
                 sh '''
-                    echo "Checking project files..."
+                    echo "Checking frontend files..."
                     ls -la
 
                     if [ ! -f index.html ]; then
@@ -36,13 +36,48 @@ pipeline {
 
             steps {
                 sh '''
-                    echo "Building DEV Docker image..."
+                    echo "Building DEV image..."
 
                     docker build \
                     -t ${IMAGE_NAME}:dev-${BUILD_NUMBER} \
                     .
+                '''
+            }
+        }
 
-                    docker images | grep ${IMAGE_NAME}
+        stage('Docker Hub Login') {
+            when {
+                branch 'develop'
+            }
+
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKERHUB_TOKEN" | \
+                        docker login \
+                        -u "$DOCKERHUB_USERNAME" \
+                        --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Push DEV Docker Image') {
+            when {
+                branch 'develop'
+            }
+
+            steps {
+                sh '''
+                    echo "Pushing DEV Docker image..."
+
+                    docker push ${IMAGE_NAME}:dev-${BUILD_NUMBER}
                 '''
             }
         }
@@ -53,7 +88,7 @@ pipeline {
             }
 
             steps {
-                echo "Production pipeline will be added later"
+                echo "Production pipeline will be configured later"
             }
         }
     }
@@ -65,6 +100,10 @@ pipeline {
 
         failure {
             echo "Pipeline failed"
+        }
+
+        always {
+            sh 'docker logout || true'
         }
     }
 }
